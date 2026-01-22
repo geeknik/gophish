@@ -65,6 +65,25 @@
                             <label for="ignore_cert_errors">Ignore Certificate Errors <i class="fa fa-question-circle"
                                     data-toggle="tooltip" data-placement="right" title="Ignore common certificate errors such as self-signed certs (exposes you to MiTM attacks - use carefully!)"></i></label>
                         </div>
+                        <br/>
+                        <label>
+                            <a data-toggle="collapse" href="#dkimSettings" aria-expanded="false" aria-controls="dkimSettings">
+                                DKIM Settings <i class="fa fa-caret-right"></i>
+                            </a>
+                        </label>
+                        <div class="collapse" id="dkimSettings">
+                            <div class="checkbox checkbox-primary">
+                                <input id="dkim_enabled" type="checkbox">
+                                <label for="dkim_enabled">Enable DKIM Signing <i class="fa fa-question-circle"
+                                        data-toggle="tooltip" data-placement="right" title="Sign emails with DKIM to improve deliverability."></i></label>
+                            </div>
+                            <label class="control-label" for="dkim_domain">DKIM Domain:</label>
+                            <input type="text" class="form-control" placeholder="example.com" id="dkim_domain" />
+                            <label class="control-label" for="dkim_selector">DKIM Selector:</label>
+                            <input type="text" class="form-control" placeholder="gophish" id="dkim_selector" />
+                            <label class="control-label" for="dkim_private_key">DKIM Private Key (PEM format):</label>
+                            <textarea class="form-control" placeholder="-----BEGIN RSA PRIVATE KEY-----" id="dkim_private_key" rows="5" style="font-family: monospace;"></textarea>
+                        </div>
                     </div>
                     <fieldset class="form-group">
                         <label class="control-label input-group">Email Headers:</label>

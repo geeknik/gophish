@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/mail"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -143,12 +142,10 @@ func (s *SMTP) Validate() error {
 		return ErrFromAddressNotSpecified
 	case s.Host == "":
 		return ErrHostNotSpecified
-	case !validateFromAddress(s.FromAddress):
-		return ErrInvalidFromAddress
 	}
 	_, err := mail.ParseAddress(s.FromAddress)
 	if err != nil {
-		return err
+		return ErrInvalidFromAddress
 	}
 	// Make sure addr is in host:port format
 	hp := strings.Split(s.Host, ":")
@@ -185,12 +182,6 @@ func (s *SMTP) Validate() error {
 func validateDKIMPrivateKey(privateKeyPEM string) bool {
 	block, _ := pem.Decode([]byte(privateKeyPEM))
 	return block != nil && (block.Type == "RSA PRIVATE KEY" || block.Type == "PRIVATE KEY")
-}
-
-// validateFromAddress validates
-func validateFromAddress(email string) bool {
-	r, _ := regexp.Compile("^([a-zA-Z0-9_\\-\\.]+)@([a-zA-Z0-9_\\-\\.]+)\\.([a-zA-Z]{2,18})$")
-	return r.MatchString(email)
 }
 
 // GetDialer returns a dialer for the given SMTP profile

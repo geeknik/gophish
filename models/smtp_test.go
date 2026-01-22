@@ -42,7 +42,7 @@ func (s *ModelsSuite) TestPostSMTPNoFrom(c *check.C) {
 	c.Assert(err, check.Equals, ErrFromAddressNotSpecified)
 }
 
-func (s *ModelsSuite) TestPostInvalidFrom(c *check.C) {
+func (s *ModelsSuite) TestPostValidFromWithName(c *check.C) {
 	smtp := SMTP{
 		Name:        "Test SMTP",
 		Host:        "1.1.1.1:25",
@@ -50,7 +50,7 @@ func (s *ModelsSuite) TestPostInvalidFrom(c *check.C) {
 		UserId:      1,
 	}
 	err := PostSMTP(&smtp)
-	c.Assert(err, check.Equals, ErrInvalidFromAddress)
+	c.Assert(err, check.IsNil)
 }
 
 func (s *ModelsSuite) TestPostInvalidFromEmail(c *check.C) {

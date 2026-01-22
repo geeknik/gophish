@@ -22,6 +22,10 @@ function sendTestEmail() {
             username: $("#username").val(),
             password: $("#password").val(),
             ignore_cert_errors: $("#ignore_cert_errors").prop("checked"),
+            dkim_enabled: $("#dkim_enabled").prop("checked"),
+            dkim_domain: $("#dkim_domain").val(),
+            dkim_selector: $("#dkim_selector").val(),
+            dkim_private_key: $("#dkim_private_key").val(),
             headers: headers,
         }
     }
@@ -59,6 +63,10 @@ function save(idx) {
     profile.username = $("#username").val()
     profile.password = $("#password").val()
     profile.ignore_cert_errors = $("#ignore_cert_errors").prop("checked")
+    profile.dkim_enabled = $("#dkim_enabled").prop("checked")
+    profile.dkim_domain = $("#dkim_domain").val()
+    profile.dkim_selector = $("#dkim_selector").val()
+    profile.dkim_private_key = $("#dkim_private_key").val()
     if (idx != -1) {
         profile.id = profiles[idx].id
         api.SMTPId.put(profile)
@@ -93,6 +101,11 @@ function dismiss() {
     $("#username").val("")
     $("#password").val("")
     $("#ignore_cert_errors").prop("checked", true)
+    $("#dkim_enabled").prop("checked", false)
+    $("#dkim_domain").val("")
+    $("#dkim_selector").val("")
+    $("#dkim_private_key").val("")
+    $("#dkimSettings").collapse('hide')
     $("#headersTable").dataTable().DataTable().clear().draw()
     $("#modal").modal('hide')
 }
@@ -162,6 +175,15 @@ function edit(idx) {
         $("#username").val(profile.username)
         $("#password").val(profile.password)
         $("#ignore_cert_errors").prop("checked", profile.ignore_cert_errors)
+        $("#dkim_enabled").prop("checked", profile.dkim_enabled)
+        $("#dkim_domain").val(profile.dkim_domain)
+        $("#dkim_selector").val(profile.dkim_selector)
+        $("#dkim_private_key").val(profile.dkim_private_key)
+        if (profile.dkim_enabled) {
+            $("#dkimSettings").collapse('show')
+        } else {
+            $("#dkimSettings").collapse('hide')
+        }
         $.each(profile.headers, function (i, record) {
             addCustomHeader(record.key, record.value)
         });
@@ -183,6 +205,15 @@ function copy(idx) {
     $("#username").val(profile.username)
     $("#password").val(profile.password)
     $("#ignore_cert_errors").prop("checked", profile.ignore_cert_errors)
+    $("#dkim_enabled").prop("checked", profile.dkim_enabled)
+    $("#dkim_domain").val(profile.dkim_domain)
+    $("#dkim_selector").val(profile.dkim_selector)
+    $("#dkim_private_key").val(profile.dkim_private_key)
+    if (profile.dkim_enabled) {
+        $("#dkimSettings").collapse('show')
+    } else {
+        $("#dkimSettings").collapse('hide')
+    }
 }
 
 function load() {
@@ -330,6 +361,12 @@ $(document).ready(function () {
             .row($(this).parents('tr'))
             .remove()
             .draw();
+    });
+    $('#dkimSettings').on('hide.bs.collapse', function () {
+        $('a[href="#dkimSettings"] i').removeClass('fa-caret-down').addClass('fa-caret-right');
+    });
+    $('#dkimSettings').on('show.bs.collapse', function () {
+        $('a[href="#dkimSettings"] i').removeClass('fa-caret-right').addClass('fa-caret-down');
     });
     load()
 })
