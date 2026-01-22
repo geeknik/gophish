@@ -135,7 +135,7 @@ func ExtractPhishUrlParams(data string, base_key string) (map[string]string, boo
 	if len(data) > 8 {
 		enc_key = data[:8]
 		enc_vals, err := base64.RawURLEncoding.DecodeString(data[8:])
-		if err == nil {
+		if err == nil && len(enc_vals) > 0 {
 			dec_params := make([]byte, len(enc_vals)-1)
 
 			var crc byte = enc_vals[0]

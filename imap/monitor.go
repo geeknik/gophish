@@ -116,7 +116,8 @@ func (im *Monitor) Shutdown() error {
 }
 
 // checkForNewEmails logs into an IMAP account and checks unread emails
-//  for the rid campaign identifier.
+//
+//	for the rid campaign identifier.
 func checkForNewEmails(im models.IMAP) {
 	im.Host = im.Host + ":" + strconv.Itoa(int(im.Port)) // Append port
 	mailServer := Mailbox{
@@ -144,6 +145,10 @@ func checkForNewEmails(im models.IMAP) {
 			// Check if sender is from company's domain, if enabled. TODO: Make this an IMAP filter
 			if im.RestrictDomain != "" { // e.g domainResitct = widgets.com
 				splitEmail := strings.Split(m.Email.From, "@")
+				if len(splitEmail) < 2 {
+					log.Debug("Ignoring email with invalid From address: ", m.Email.From)
+					continue
+				}
 				senderDomain := splitEmail[len(splitEmail)-1]
 				if senderDomain != im.RestrictDomain {
 					log.Debug("Ignoring email as not from company domain: ", senderDomain)

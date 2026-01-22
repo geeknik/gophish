@@ -89,8 +89,8 @@ func (a *Attachment) ApplyTemplate(ptx PhishingTemplateContext) (io.Reader, erro
 			if err != nil {
 				return nil, err
 			}
-			defer ff.Close()
 			contents, err := ioutil.ReadAll(ff)
+			ff.Close()
 			if err != nil {
 				return nil, err
 			}

@@ -127,6 +127,7 @@ func (as *Server) ImportSite(w http.ResponseWriter, r *http.Request) {
 		JSONResponse(w, models.Response{Success: false, Message: err.Error()}, http.StatusBadRequest)
 		return
 	}
+	defer resp.Body.Close()
 	// Insert the base href tag to better handle relative resources
 	d, err := goquery.NewDocumentFromResponse(resp)
 	if err != nil {

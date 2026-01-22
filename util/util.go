@@ -36,7 +36,7 @@ func ParseMail(r *http.Request) (email.Email, error) {
 	e := email.Email{}
 	m, err := mail.ReadMessage(r.Body)
 	if err != nil {
-		fmt.Println(err)
+		log.Error(err)
 	}
 	body, err := ioutil.ReadAll(m.Body)
 	e.HTML = body
@@ -59,7 +59,6 @@ func ParseCSV(r *http.Request) ([]models.Target, error) {
 		if part.FileName() == "" {
 			continue
 		}
-		defer part.Close()
 		reader := csv.NewReader(part)
 		reader.TrimLeadingSpace = true
 		record, err := reader.Read()
@@ -120,6 +119,7 @@ func ParseCSV(r *http.Request) ([]models.Target, error) {
 			}
 			ts = append(ts, t)
 		}
+		part.Close()
 	}
 	return ts, nil
 }
