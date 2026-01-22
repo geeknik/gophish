@@ -15,6 +15,11 @@ const MinPasswordLength = 8
 // APIKeyLength is the length of Gophish API keys
 const APIKeyLength = 32
 
+// DummyHash is a pre-computed bcrypt hash used for constant-time comparison
+// when a user doesn't exist. This prevents timing-based user enumeration attacks.
+// The hash corresponds to a random password and will never match any user input.
+var DummyHash = "$2a$10$Xt7J5TxQxHVGqJQhZGKYq.aSRCf8RbNbdzJEXDtF4WMGDzYpXBnPi"
+
 // ErrInvalidPassword is thrown when a user provides an incorrect password.
 var ErrInvalidPassword = errors.New("Invalid Password")
 

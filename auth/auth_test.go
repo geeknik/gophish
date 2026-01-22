@@ -39,3 +39,24 @@ func TestValidatePasswordChange(t *testing.T) {
 		t.Fatalf("unexpected error received. expected %v got %v", ErrReusedPassword, got)
 	}
 }
+
+func TestDummyHashIsValidBcrypt(t *testing.T) {
+	err := ValidatePassword("any-password", DummyHash)
+	if err == nil {
+		t.Fatalf("DummyHash should never match any password")
+	}
+}
+
+func TestConstantTimeComparison(t *testing.T) {
+	realHash, _ := GeneratePasswordHash("real-password")
+
+	errDummy := ValidatePassword("wrong-password", DummyHash)
+	if errDummy == nil {
+		t.Fatalf("DummyHash comparison should fail")
+	}
+
+	errReal := ValidatePassword("wrong-password", realHash)
+	if errReal == nil {
+		t.Fatalf("Real hash comparison with wrong password should fail")
+	}
+}

@@ -373,18 +373,19 @@ func (as *AdminServer) Login(w http.ResponseWriter, r *http.Request) {
 		}
 		template.Must(templates, err).ExecuteTemplate(w, "base", params)
 	case r.Method == "POST":
-		// Find the user with the provided username
 		username, password := r.FormValue("username"), r.FormValue("password")
 		u, err := models.GetUserByUsername(username)
-		if err != nil {
-			log.Error(err)
-			as.handleInvalidLogin(w, r, "Invalid Username/Password")
-			return
+
+		// Always perform password validation to prevent timing-based user enumeration.
+		// If user doesn't exist, compare against a dummy hash to maintain constant time.
+		hashToCompare := auth.DummyHash
+		if err == nil {
+			hashToCompare = u.Hash
 		}
-		// Validate the user's password
-		err = auth.ValidatePassword(password, u.Hash)
-		if err != nil {
-			log.Error(err)
+
+		passwordErr := auth.ValidatePassword(password, hashToCompare)
+
+		if err != nil || passwordErr != nil {
 			as.handleInvalidLogin(w, r, "Invalid Username/Password")
 			return
 		}
