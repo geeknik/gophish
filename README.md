@@ -1,10 +1,6 @@
 Gophish
 =======
 
-![Build Status](https://github.com/geeknik/gophish/workflows/CI/badge.svg) [![GoDoc](https://godoc.org/github.com/geeknik/gophish?status.svg)](https://godoc.org/github.com/geeknik/gophish)
-
-Gophish: Open-Source Phishing Toolkit
-
 Gophish is an open-source phishing toolkit. It provides the ability to quickly and easily setup and execute phishing engagements and security awareness training.
 
 ### Building From Source
