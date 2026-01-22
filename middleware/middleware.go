@@ -72,7 +72,8 @@ func GetContext(handler http.Handler) http.HandlerFunc {
 }
 
 // RequireAPIKey ensures that a valid API key is set as either the api_key GET
-// parameter, or a Bearer token.
+// parameter, a Bearer token, or falls back to session-based authentication
+// for web UI requests.
 func RequireAPIKey(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -93,7 +94,14 @@ func RequireAPIKey(handler http.Handler) http.Handler {
 				ak = strings.TrimPrefix(ak, "Bearer ")
 			}
 		}
+		// If still no API key, check for session-based auth (web UI)
 		if ak == "" {
+			if u := ctx.Get(r, "user"); u != nil {
+				user := u.(models.User)
+				r = ctx.Set(r, "user_id", user.Id)
+				handler.ServeHTTP(w, r)
+				return
+			}
 			JSONError(w, http.StatusUnauthorized, "API Key not set")
 			return
 		}

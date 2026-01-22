@@ -96,6 +96,9 @@ func (mw *MailWorker) Start(ctx context.Context) {
 			return
 		case ms := <-mw.queue:
 			go func(ctx context.Context, ms []Mail) {
+				if len(ms) == 0 {
+					return
+				}
 				dialer, err := ms[0].GetDialer()
 				if err != nil {
 					errorMail(err, ms)
@@ -109,6 +112,9 @@ func (mw *MailWorker) Start(ctx context.Context) {
 
 // Queue sends the provided mail to the internal queue for processing.
 func (mw *MailWorker) Queue(ms []Mail) {
+	if len(ms) == 0 {
+		return
+	}
 	mw.queue <- ms
 }
 

@@ -81,6 +81,13 @@ func generateSecureKey() string {
 	return fmt.Sprintf("%x", k)
 }
 
+func GetEncryptionKey() []byte {
+	if conf == nil || conf.EncryptionKey == "" {
+		return nil
+	}
+	return []byte(conf.EncryptionKey)
+}
+
 func chooseDBDriver(name, openStr string) goose.DBDriver {
 	d := goose.DBDriver{Name: name, OpenStr: openStr}
 

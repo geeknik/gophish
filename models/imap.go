@@ -5,6 +5,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/gophish/gophish/encryption"
 	log "github.com/gophish/gophish/logger"
 )
 
@@ -59,6 +60,36 @@ var ErrInvalidIMAPFreq = errors.New("Invalid polling frequency")
 // TableName specifies the database tablename for Gorm to use
 func (im IMAP) TableName() string {
 	return "imap"
+}
+
+func (im *IMAP) BeforeSave() error {
+	if im.Password != "" {
+		key := GetEncryptionKey()
+		if key != nil {
+			encrypted, err := encryption.Encrypt(key, im.Password)
+			if err != nil {
+				log.Error("Failed to encrypt IMAP password: ", err)
+				return err
+			}
+			im.Password = encrypted
+		}
+	}
+	return nil
+}
+
+func (im *IMAP) AfterFind() error {
+	if im.Password != "" {
+		key := GetEncryptionKey()
+		if key != nil {
+			decrypted, err := encryption.Decrypt(key, im.Password)
+			if err != nil {
+				log.Error("Failed to decrypt IMAP password: ", err)
+				return err
+			}
+			im.Password = decrypted
+		}
+	}
+	return nil
 }
 
 // Validate ensures that IMAP configs/connections are valid

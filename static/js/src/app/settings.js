@@ -3,9 +3,8 @@ $(document).ready(function () {
     $("#apiResetForm").submit(function (e) {
         api.reset()
             .success(function (response) {
-                user.api_key = response.data
                 successFlash(response.message)
-                $("#api_key").val(user.api_key)
+                $("#api_key").val(response.data)
             })
             .error(function (data) {
                 errorFlash(data.message)

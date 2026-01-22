@@ -407,8 +407,12 @@ func (as *AdminServer) Login(w http.ResponseWriter, r *http.Request) {
 // Logout destroys the current user session
 func (as *AdminServer) Logout(w http.ResponseWriter, r *http.Request) {
 	session := ctx.Get(r, "session").(*sessions.Session)
-	delete(session.Values, "id")
-	Flash(w, r, "success", "You have successfully logged out")
+	// Clear all session values
+	for key := range session.Values {
+		delete(session.Values, key)
+	}
+	// Set MaxAge to -1 to delete the cookie
+	session.Options.MaxAge = -1
 	session.Save(r, w)
 	http.Redirect(w, r, "/login", http.StatusFound)
 }

@@ -14,6 +14,7 @@ import (
 
 	"github.com/gophish/gomail"
 	"github.com/gophish/gophish/dialer"
+	"github.com/gophish/gophish/encryption"
 	log "github.com/gophish/gophish/logger"
 	"github.com/gophish/gophish/mailer"
 	"github.com/jinzhu/gorm"
@@ -87,6 +88,52 @@ var ErrInvalidDKIMKey = errors.New("Invalid DKIM private key")
 // TableName specifies the database tablename for Gorm to use
 func (s SMTP) TableName() string {
 	return "smtp"
+}
+
+func (s *SMTP) BeforeSave() error {
+	key := GetEncryptionKey()
+	if key != nil {
+		if s.Password != "" {
+			encrypted, err := encryption.Encrypt(key, s.Password)
+			if err != nil {
+				log.Error("Failed to encrypt SMTP password: ", err)
+				return err
+			}
+			s.Password = encrypted
+		}
+		if s.DKIMPrivateKey != "" {
+			encrypted, err := encryption.Encrypt(key, s.DKIMPrivateKey)
+			if err != nil {
+				log.Error("Failed to encrypt DKIM private key: ", err)
+				return err
+			}
+			s.DKIMPrivateKey = encrypted
+		}
+	}
+	return nil
+}
+
+func (s *SMTP) AfterFind() error {
+	key := GetEncryptionKey()
+	if key != nil {
+		if s.Password != "" {
+			decrypted, err := encryption.Decrypt(key, s.Password)
+			if err != nil {
+				log.Error("Failed to decrypt SMTP password: ", err)
+				return err
+			}
+			s.Password = decrypted
+		}
+		if s.DKIMPrivateKey != "" {
+			decrypted, err := encryption.Decrypt(key, s.DKIMPrivateKey)
+			if err != nil {
+				log.Error("Failed to decrypt DKIM private key: ", err)
+				return err
+			}
+			s.DKIMPrivateKey = decrypted
+		}
+	}
+	return nil
 }
 
 // Validate ensures that SMTP configs/connections are valid
