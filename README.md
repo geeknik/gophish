@@ -36,6 +36,12 @@ Releases of Gophish prior to v0.10.1 have a default username of `admin` and pass
 
 Documentation can be found on our [site](http://getgophish.com/documentation). Find something missing? Let us know by filing an issue!
 
+#### Additional Documentation
+
+- [Security Features](docs/SECURITY.md) - Encryption at rest, session security, and OPSEC configuration
+- [DKIM Configuration](docs/DKIM.md) - Email authentication setup for improved deliverability
+- [OAuth 2.0 IMAP](docs/OAUTH.md) - Microsoft 365 OAuth setup for reply tracking
+
 ### Issues
 
 Find a bug? Want more features? Find something missing in the documentation? Let us know! Please don't hesitate to [file an issue](https://github.com/gophish/gophish/issues/new) and we'll get right on it.

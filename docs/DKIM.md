@@ -47,7 +47,23 @@ You need to add a TXT record to your domain's DNS.
 
 ## 3. Configure Gophish
 
-Currently, DKIM configuration is supported via the Gophish API.
+### Using the Web UI
+
+DKIM can be configured directly in the Gophish web interface:
+
+1. Navigate to **Sending Profiles** in the left sidebar.
+2. Click **New Profile** or edit an existing profile.
+3. Scroll down to the **DKIM Settings** section.
+4. Check **Enable DKIM Signing**.
+5. Fill in the following fields:
+   - **DKIM Domain**: Your sending domain (e.g., `example.com`)
+   - **DKIM Selector**: The selector you used in DNS (e.g., `gophish1`)
+   - **DKIM Private Key**: Paste the entire contents of your `dkim_private.pem` file, including the `-----BEGIN RSA PRIVATE KEY-----` and `-----END RSA PRIVATE KEY-----` lines.
+6. Click **Save Profile**.
+
+### Using the API
+
+DKIM configuration is also supported via the Gophish API.
 
 **API Endpoint:** `POST /api/smtp/` (to create) or `PUT /api/smtp/{id}` (to update)
 
@@ -70,7 +86,7 @@ Include the following fields in your SMTP profile configuration:
 }
 ```
 
-> **Note:** The `dkim_private_key` must be the full content of your `dkim_private.pem` file, including the header and footer lines. Gophish will encrypt this key at rest if an encryption key is configured.
+> **Note:** The `dkim_private_key` must be the full content of your `dkim_private.pem` file, including the header and footer lines. Gophish will encrypt this key at rest if an encryption key is configured (see [Security Documentation](SECURITY.md)).
 
 ## 4. Verify Configuration
 

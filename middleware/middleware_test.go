@@ -209,3 +209,62 @@ func TestApplySecurityHeaders(t *testing.T) {
 		}
 	}
 }
+
+func TestMiddlewareSetup(t *testing.T) {
+	testConf := &config.Config{
+		ServerName:        "nginx/1.18.0",
+		SessionCookieName: "JSESSIONID",
+	}
+
+	Setup(testConf)
+
+	if conf == nil {
+		t.Fatal("Setup should set conf package variable")
+	}
+	if conf.ServerName != "nginx/1.18.0" {
+		t.Errorf("conf.ServerName = %s, want nginx/1.18.0", conf.ServerName)
+	}
+	if conf.SessionCookieName != "JSESSIONID" {
+		t.Errorf("conf.SessionCookieName = %s, want JSESSIONID", conf.SessionCookieName)
+	}
+}
+
+func TestSessionBasedAPIAuth(t *testing.T) {
+	testCtx := setupTest(t)
+	_ = testCtx
+
+	u, err := models.GetUser(1)
+	if err != nil {
+		t.Fatalf("error getting user: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/campaigns/", nil)
+	req.Header.Set("Content-Type", "application/json")
+	req = ctx.Set(req, "user", u)
+
+	response := httptest.NewRecorder()
+	RequireAPIKey(successHandler).ServeHTTP(response, req)
+
+	expected := http.StatusOK
+	got := response.Code
+	if got != expected {
+		t.Fatalf("Session-based auth should work for API. expected %d got %d", expected, got)
+	}
+}
+
+func TestSessionBasedAPIAuthNoUser(t *testing.T) {
+	setupTest(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/campaigns/", nil)
+	req.Header.Set("Content-Type", "application/json")
+	req = ctx.Set(req, "user", nil)
+
+	response := httptest.NewRecorder()
+	RequireAPIKey(successHandler).ServeHTTP(response, req)
+
+	expected := http.StatusUnauthorized
+	got := response.Code
+	if got != expected {
+		t.Fatalf("No user should fail auth. expected %d got %d", expected, got)
+	}
+}
