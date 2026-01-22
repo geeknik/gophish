@@ -28,16 +28,18 @@ type PhishServer struct {
 
 // Config represents the configuration information.
 type Config struct {
-	AdminConf      AdminServer `json:"admin_server"`
-	PhishConf      PhishServer `json:"phish_server"`
-	DBName         string      `json:"db_name"`
-	DBPath         string      `json:"db_path"`
-	DBSSLCaPath    string      `json:"db_sslca_path"`
-	MigrationsPath string      `json:"migrations_prefix"`
-	TestFlag       bool        `json:"test_flag"`
-	ContactAddress string      `json:"contact_address"`
-	Logging        *log.Config `json:"logging"`
-	EncryptionKey  string      `json:"encryption_key"`
+	AdminConf         AdminServer `json:"admin_server"`
+	PhishConf         PhishServer `json:"phish_server"`
+	DBName            string      `json:"db_name"`
+	DBPath            string      `json:"db_path"`
+	DBSSLCaPath       string      `json:"db_sslca_path"`
+	MigrationsPath    string      `json:"migrations_prefix"`
+	TestFlag          bool        `json:"test_flag"`
+	ContactAddress    string      `json:"contact_address"`
+	Logging           *log.Config `json:"logging"`
+	EncryptionKey     string      `json:"encryption_key"`
+	ServerName        string      `json:"server_name"`
+	SessionCookieName string      `json:"session_cookie_name"`
 }
 
 // Version contains the current gophish version
@@ -65,5 +67,12 @@ func LoadConfig(filepath string) (*Config, error) {
 	config.MigrationsPath = config.MigrationsPath + config.DBName
 	// Explicitly set the TestFlag to false to prevent config.json overrides
 	config.TestFlag = false
+	// Set default values for OPSEC if not specified
+	if config.ServerName == "" {
+		config.ServerName = "Apache/2.4.41 (Ubuntu)"
+	}
+	if config.SessionCookieName == "" {
+		config.SessionCookieName = "PHPSESSID"
+	}
 	return config, nil
 }

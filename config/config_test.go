@@ -66,6 +66,8 @@ func TestLoadConfig(t *testing.T) {
 	expectedConfig.TestFlag = false
 	expectedConfig.AdminConf.CSRFKey = ""
 	expectedConfig.Logging = &log.Config{}
+	expectedConfig.ServerName = "Apache/2.4.41 (Ubuntu)"
+	expectedConfig.SessionCookieName = "PHPSESSID"
 	if !reflect.DeepEqual(expectedConfig, conf) {
 		t.Fatalf("invalid config received. expected %#v got %#v", expectedConfig, conf)
 	}

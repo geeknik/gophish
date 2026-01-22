@@ -101,6 +101,8 @@ func main() {
 		log.Fatal(err)
 	}
 
+	middleware.Setup(conf)
+
 	// Unlock any maillogs that may have been locked for processing
 	// when Gophish was last shutdown.
 	err = models.UnlockAllMailLogs()

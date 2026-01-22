@@ -6,14 +6,22 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gophish/gophish/config"
 	ctx "github.com/gophish/gophish/context"
 	"github.com/gophish/gophish/models"
 	"github.com/gorilla/csrf"
 )
 
+var conf *config.Config
+
 // CSRFExemptPrefixes are a list of routes that are exempt from CSRF protection
 var CSRFExemptPrefixes = []string{
 	"/api",
+}
+
+// Setup initializes the middleware package with the given configuration
+func Setup(c *config.Config) {
+	conf = c
 }
 
 // CSRFExceptions is a middleware that prevents CSRF checks on routes listed in
@@ -51,7 +59,11 @@ func GetContext(handler http.Handler) http.HandlerFunc {
 		}
 		// Set the context appropriately here.
 		// Set the session
-		session, _ := Store.Get(r, "gophish")
+		cookieName := "gophish"
+		if conf != nil && conf.SessionCookieName != "" {
+			cookieName = conf.SessionCookieName
+		}
+		session, _ := Store.Get(r, cookieName)
 		// Put the session in the context so that we can
 		// reuse the values in different handlers
 		r = ctx.Set(r, "session", session)
