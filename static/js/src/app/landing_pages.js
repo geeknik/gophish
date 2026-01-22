@@ -45,7 +45,6 @@ function dismiss() {
     $("#redirect_url_input").val("")
     $("#modal").find("input[type='checkbox']").prop("checked", false)
     $("#capture_passwords").hide()
-    $("#redirect_url").hide()
     $("#modal").modal('hide')
 }
 
@@ -122,7 +121,6 @@ function edit(idx) {
         $("#redirect_url_input").val(page.redirect_url)
         if (page.capture_credentials) {
             $("#capture_passwords").show()
-            $("#redirect_url").show()
         }
     } else {
         $("#modalLabel").text("New Landing Page")
@@ -236,7 +234,6 @@ $(document).ready(function () {
     });
     $("#capture_credentials_checkbox").change(function () {
         $("#capture_passwords").toggle()
-        $("#redirect_url").toggle()
     })
     CKEDITOR.on('dialogDefinition', function (ev) {
         // Take the dialog name and its definition from the event data.
