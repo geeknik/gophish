@@ -29,6 +29,11 @@ type IMAP struct {
 	LastLogin                   time.Time `json:"last_login,omitempty"`
 	ModifiedDate                time.Time `json:"modified_date"`
 	IMAPFreq                    uint32    `json:"imap_freq,string,omitempty"`
+	// OAuth 2.0 fields for Microsoft 365
+	UseOAuth2     bool   `json:"use_oauth2" gorm:"column:use_oauth2"`
+	OAuthTenantID string `json:"oauth_tenant_id" gorm:"column:oauth_tenant_id"`
+	OAuthClientID string `json:"oauth_client_id" gorm:"column:oauth_client_id"`
+	OAuthSecret   string `json:"oauth_client_secret" gorm:"column:oauth_client_secret"`
 }
 
 // ErrIMAPHostNotSpecified is thrown when there is no Host specified
@@ -63,9 +68,9 @@ func (im IMAP) TableName() string {
 }
 
 func (im *IMAP) BeforeSave() error {
-	if im.Password != "" {
-		key := GetEncryptionKey()
-		if key != nil {
+	key := GetEncryptionKey()
+	if key != nil {
+		if im.Password != "" {
 			encrypted, err := encryption.Encrypt(key, im.Password)
 			if err != nil {
 				log.Error("Failed to encrypt IMAP password: ", err)
@@ -73,14 +78,22 @@ func (im *IMAP) BeforeSave() error {
 			}
 			im.Password = encrypted
 		}
+		if im.OAuthSecret != "" {
+			encrypted, err := encryption.Encrypt(key, im.OAuthSecret)
+			if err != nil {
+				log.Error("Failed to encrypt OAuth secret: ", err)
+				return err
+			}
+			im.OAuthSecret = encrypted
+		}
 	}
 	return nil
 }
 
 func (im *IMAP) AfterFind() error {
-	if im.Password != "" {
-		key := GetEncryptionKey()
-		if key != nil {
+	key := GetEncryptionKey()
+	if key != nil {
+		if im.Password != "" {
 			decrypted, err := encryption.Decrypt(key, im.Password)
 			if err != nil {
 				log.Error("Failed to decrypt IMAP password: ", err)
@@ -88,21 +101,41 @@ func (im *IMAP) AfterFind() error {
 			}
 			im.Password = decrypted
 		}
+		if im.OAuthSecret != "" {
+			decrypted, err := encryption.Decrypt(key, im.OAuthSecret)
+			if err != nil {
+				log.Error("Failed to decrypt OAuth secret: ", err)
+				return err
+			}
+			im.OAuthSecret = decrypted
+		}
 	}
 	return nil
 }
 
+// ErrOAuthConfigIncomplete is thrown when OAuth 2.0 is enabled but configuration is incomplete
+var ErrOAuthConfigIncomplete = errors.New("OAuth 2.0 configuration incomplete: tenant_id, client_id, and client_secret are required")
+
 // Validate ensures that IMAP configs/connections are valid
 func (im *IMAP) Validate() error {
-	switch {
-	case im.Host == "":
+	if im.Host == "" {
 		return ErrIMAPHostNotSpecified
-	case im.Port == 0:
+	}
+	if im.Port == 0 {
 		return ErrIMAPPortNotSpecified
-	case im.Username == "":
+	}
+	if im.Username == "" {
 		return ErrIMAPUsernameNotSpecified
-	case im.Password == "":
-		return ErrIMAPPasswordNotSpecified
+	}
+
+	if im.UseOAuth2 {
+		if im.OAuthTenantID == "" || im.OAuthClientID == "" || im.OAuthSecret == "" {
+			return ErrOAuthConfigIncomplete
+		}
+	} else {
+		if im.Password == "" {
+			return ErrIMAPPasswordNotSpecified
+		}
 	}
 
 	// Set the default value for Folder

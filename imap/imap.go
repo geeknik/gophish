@@ -11,6 +11,7 @@ import (
 	"github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
 	"github.com/emersion/go-message/charset"
+	"github.com/emersion/go-sasl"
 	"github.com/gophish/gophish/dialer"
 	log "github.com/gophish/gophish/logger"
 	"github.com/gophish/gophish/models"
@@ -44,6 +45,9 @@ type Mailbox struct {
 	Folder           string
 	// Read only mode, false (original logic) if not initialized
 	ReadOnly bool
+	// OAuth 2.0 configuration
+	UseOAuth2   bool
+	OAuthClient *OAuthClient
 }
 
 // Validate validates supplied IMAP model by connecting to the server
@@ -54,14 +58,20 @@ func Validate(s *models.IMAP) error {
 		return err
 	}
 
-	s.Host = s.Host + ":" + strconv.Itoa(int(s.Port)) // Append port
+	hostWithPort := s.Host + ":" + strconv.Itoa(int(s.Port))
 	mailServer := Mailbox{
-		Host:             s.Host,
+		Host:             hostWithPort,
 		TLS:              s.TLS,
 		IgnoreCertErrors: s.IgnoreCertErrors,
 		User:             s.Username,
 		Pwd:              s.Password,
-		Folder:           s.Folder}
+		Folder:           s.Folder,
+		UseOAuth2:        s.UseOAuth2,
+	}
+
+	if s.UseOAuth2 {
+		mailServer.OAuthClient = NewOAuthClient(s.OAuthTenantID, s.OAuthClientID, s.OAuthSecret)
+	}
 
 	imapClient, err := mailServer.newClient()
 	if err != nil {
@@ -197,9 +207,23 @@ func (mbox *Mailbox) newClient() (*client.Client, error) {
 		return imapClient, err
 	}
 
-	err = imapClient.Login(mbox.User, mbox.Pwd)
-	if err != nil {
-		return imapClient, err
+	if mbox.UseOAuth2 && mbox.OAuthClient != nil {
+		accessToken, err := mbox.OAuthClient.GetAccessToken()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get OAuth access token: %w", err)
+		}
+		saslClient := sasl.NewOAuthBearerClient(&sasl.OAuthBearerOptions{
+			Username: mbox.User,
+			Token:    accessToken,
+		})
+		if err = imapClient.Authenticate(saslClient); err != nil {
+			return imapClient, fmt.Errorf("OAuth authentication failed: %w", err)
+		}
+	} else {
+		err = imapClient.Login(mbox.User, mbox.Pwd)
+		if err != nil {
+			return imapClient, err
+		}
 	}
 
 	_, err = imapClient.Select(mbox.Folder, mbox.ReadOnly)

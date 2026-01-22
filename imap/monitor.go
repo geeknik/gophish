@@ -119,14 +119,19 @@ func (im *Monitor) Shutdown() error {
 //
 //	for the rid campaign identifier.
 func checkForNewEmails(im models.IMAP) {
-	im.Host = im.Host + ":" + strconv.Itoa(int(im.Port)) // Append port
+	hostWithPort := im.Host + ":" + strconv.Itoa(int(im.Port))
 	mailServer := Mailbox{
-		Host:             im.Host,
+		Host:             hostWithPort,
 		TLS:              im.TLS,
 		IgnoreCertErrors: im.IgnoreCertErrors,
 		User:             im.Username,
 		Pwd:              im.Password,
 		Folder:           im.Folder,
+		UseOAuth2:        im.UseOAuth2,
+	}
+
+	if im.UseOAuth2 {
+		mailServer.OAuthClient = NewOAuthClient(im.OAuthTenantID, im.OAuthClientID, im.OAuthSecret)
 	}
 
 	msgs, err := mailServer.GetUnread(true, false)
