@@ -1,15 +1,28 @@
 package mailer
 
 import (
+	"bytes"
 	"context"
+	"crypto"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"net/textproto"
 
+	"github.com/emersion/go-msgauth/dkim"
 	"github.com/gophish/gomail"
 	log "github.com/gophish/gophish/logger"
 	"github.com/sirupsen/logrus"
 )
+
+type DKIMConfig struct {
+	Enabled    bool
+	Domain     string
+	Selector   string
+	PrivateKey string
+}
 
 // MaxReconnectAttempts is the maximum number of times we should reconnect to a server
 var MaxReconnectAttempts = 10
@@ -56,6 +69,7 @@ type Mail interface {
 	Generate(msg *gomail.Message) error
 	GetDialer() (Dialer, error)
 	GetSmtpFrom() (string, error)
+	GetDKIMConfig() (*DKIMConfig, error)
 }
 
 // MailWorker is the worker that receives slices of emails
@@ -135,6 +149,34 @@ func dialHost(ctx context.Context, dialer Dialer) (Sender, error) {
 	return sender, err
 }
 
+func parsePrivateKey(privateKeyPEM string) (crypto.Signer, error) {
+	block, _ := pem.Decode([]byte(privateKeyPEM))
+	if block == nil {
+		return nil, fmt.Errorf("failed to parse PEM block containing private key")
+	}
+
+	if block.Type == "RSA PRIVATE KEY" {
+		key, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse RSA private key: %v", err)
+		}
+		return key, nil
+	} else if block.Type == "PRIVATE KEY" {
+		key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse PKCS8 private key: %v", err)
+		}
+		switch key := key.(type) {
+		case *rsa.PrivateKey:
+			return key, nil
+		default:
+			return nil, fmt.Errorf("unsupported private key type")
+		}
+	}
+
+	return nil, fmt.Errorf("unsupported private key type: %s", block.Type)
+}
+
 // sendMail attempts to send the provided Mail instances.
 // If the context is cancelled before all of the mail are sent,
 // sendMail just returns and does not modify those emails.
@@ -168,7 +210,42 @@ func sendMail(ctx context.Context, dialer Dialer, ms []Mail) {
 			continue
 		}
 
-		err = gomail.SendCustomFrom(sender, smtp_from, message)
+		var msgToSend io.WriterTo = message
+
+		dkimConfig, err := m.GetDKIMConfig()
+		if err == nil && dkimConfig != nil && dkimConfig.Enabled {
+			var buf bytes.Buffer
+			message.WriteTo(&buf)
+
+			signer, err := parsePrivateKey(dkimConfig.PrivateKey)
+			if err != nil {
+				log.WithFields(logrus.Fields{
+					"error": err,
+				}).Warn("Failed to parse DKIM private key, sending unsigned")
+				msgToSend = message
+			} else {
+				signedBuf := &bytes.Buffer{}
+				err = dkim.Sign(signedBuf, &buf, &dkim.SignOptions{
+					Domain:                 dkimConfig.Domain,
+					Selector:               dkimConfig.Selector,
+					Signer:                 signer,
+					Identifier:             smtp_from,
+					HeaderCanonicalization: dkim.CanonicalizationRelaxed,
+					BodyCanonicalization:   dkim.CanonicalizationRelaxed,
+				})
+				if err != nil {
+					log.WithFields(logrus.Fields{
+						"error": err,
+					}).Warn("Failed to sign email with DKIM, sending unsigned")
+					msgToSend = message
+				} else {
+					msgToSend = bytes.NewReader(signedBuf.Bytes())
+				}
+			}
+		}
+
+		to := []string{message.GetHeader("To")[0]}
+		err = sender.Send(smtp_from, to, msgToSend)
 		if err != nil {
 			if te, ok := err.(*textproto.Error); ok {
 				switch {

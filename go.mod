@@ -7,7 +7,7 @@ require (
 	github.com/NYTimes/gziphandler v1.1.1
 	github.com/PuerkitoBio/goquery v1.9.1
 	github.com/emersion/go-imap v1.2.1
-	github.com/emersion/go-message v0.18.0
+	github.com/emersion/go-message v0.18.1
 	github.com/go-sql-driver/mysql v1.8.0
 	github.com/gophish/gomail v0.0.0-20200818021916-1f6d0dfd512e
 	github.com/gorilla/context v1.1.2
@@ -22,7 +22,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.28
 	github.com/oschwald/maxminddb-golang v1.12.0
 	github.com/sirupsen/logrus v1.9.3
-	golang.org/x/crypto v0.21.0
+	golang.org/x/crypto v0.31.0
 	golang.org/x/time v0.5.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405
@@ -33,6 +33,7 @@ require (
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20231202071711-9a357b53e9c9 // indirect
 	github.com/andybalholm/cascadia v1.3.2 // indirect
+	github.com/emersion/go-msgauth v0.7.0 // indirect
 	github.com/emersion/go-sasl v0.0.0-20231106173351-e73c9f7bad43 // indirect
 	github.com/emersion/go-textwrapper v0.0.0-20200911093747-65d896831594 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
@@ -41,7 +42,7 @@ require (
 	github.com/lib/pq v1.10.9 // indirect
 	github.com/ziutek/mymysql v1.5.4 // indirect
 	golang.org/x/net v0.22.0 // indirect
-	golang.org/x/sys v0.18.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
+	golang.org/x/sys v0.28.0 // indirect
+	golang.org/x/text v0.21.0 // indirect
 	gopkg.in/alexcesaro/quotedprintable.v3 v3.0.0-20150716171945-2caba252f4dc // indirect
 )

@@ -163,6 +163,20 @@ func (m *MailLog) GetSmtpFrom() (string, error) {
 	return f.Address, err
 }
 
+func (m *MailLog) GetDKIMConfig() (*mailer.DKIMConfig, error) {
+	c, err := GetCampaign(m.CampaignId, m.UserId)
+	if err != nil {
+		return nil, err
+	}
+
+	return &mailer.DKIMConfig{
+		Enabled:    c.SMTP.DKIMEnabled,
+		Domain:     c.SMTP.DKIMDomain,
+		Selector:   c.SMTP.DKIMSelector,
+		PrivateKey: c.SMTP.DKIMPrivateKey,
+	}, nil
+}
+
 // Generate fills in the details of a gomail.Message instance with
 // the correct headers and body from the campaign and recipient listed in
 // the maillog. We accept the gomail.Message as an argument so that the caller

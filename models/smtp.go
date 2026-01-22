@@ -2,7 +2,9 @@ package models
 
 import (
 	"crypto/tls"
+	"encoding/pem"
 	"errors"
+	"fmt"
 	"net/mail"
 	"os"
 	"regexp"
@@ -43,6 +45,13 @@ type SMTP struct {
 	IgnoreCertErrors bool      `json:"ignore_cert_errors"`
 	Headers          []Header  `json:"headers"`
 	ModifiedDate     time.Time `json:"modified_date"`
+	// DKIM configuration for email signing
+	DKIMEnabled    bool   `json:"dkim_enabled" gorm:"column:dkim_enabled"`
+	DKIMDomain     string `json:"dkim_domain" gorm:"column:dkim_domain"`
+	DKIMSelector   string `json:"dkim_selector" gorm:"column:dkim_selector"`
+	DKIMPrivateKey string `json:"dkim_private_key" gorm:"column:dkim_private_key"`
+	// HELO/EHLO hostname for SPF alignment
+	HelloHostname string `json:"hello_hostname" gorm:"column:hello_hostname"`
 }
 
 // Header contains the fields and methods for a sending profile to have
@@ -68,6 +77,12 @@ var ErrHostNotSpecified = errors.New("No SMTP Host specified")
 
 // ErrInvalidHost indicates that the SMTP server string is invalid
 var ErrInvalidHost = errors.New("Invalid SMTP server address")
+
+// ErrInvalidDKIMConfig is thrown when DKIM configuration is invalid
+var ErrInvalidDKIMConfig = errors.New("Invalid DKIM configuration")
+
+// ErrInvalidDKIMKey is thrown when DKIM private key cannot be parsed
+var ErrInvalidDKIMKey = errors.New("Invalid DKIM private key")
 
 // TableName specifies the database tablename for Gorm to use
 func (s SMTP) TableName() string {
@@ -99,7 +114,30 @@ func (s *SMTP) Validate() error {
 	if err != nil {
 		return ErrInvalidHost
 	}
-	return err
+
+	// Validate DKIM configuration if enabled
+	if s.DKIMEnabled {
+		if s.DKIMDomain == "" {
+			return fmt.Errorf("%w: DKIM domain is required when DKIM is enabled", ErrInvalidDKIMConfig)
+		}
+		if s.DKIMSelector == "" {
+			return fmt.Errorf("%w: DKIM selector is required when DKIM is enabled", ErrInvalidDKIMConfig)
+		}
+		if s.DKIMPrivateKey == "" {
+			return fmt.Errorf("%w: DKIM private key is required when DKIM is enabled", ErrInvalidDKIMConfig)
+		}
+		if !validateDKIMPrivateKey(s.DKIMPrivateKey) {
+			return ErrInvalidDKIMKey
+		}
+	}
+
+	return nil
+}
+
+// validateDKIMPrivateKey checks if the private key is a valid PEM-encoded key
+func validateDKIMPrivateKey(privateKeyPEM string) bool {
+	block, _ := pem.Decode([]byte(privateKeyPEM))
+	return block != nil && (block.Type == "RSA PRIVATE KEY" || block.Type == "PRIVATE KEY")
 }
 
 // validateFromAddress validates
@@ -134,7 +172,12 @@ func (s *SMTP) GetDialer() (mailer.Dialer, error) {
 		log.Error(err)
 		hostname = "localhost"
 	}
-	d.LocalName = hostname
+	// Use configured HELO hostname if provided, otherwise use system hostname
+	if s.HelloHostname != "" {
+		d.LocalName = s.HelloHostname
+	} else {
+		d.LocalName = hostname
+	}
 	return &Dialer{d}, err
 }
 

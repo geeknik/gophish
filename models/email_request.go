@@ -178,3 +178,12 @@ func (s *EmailRequest) Generate(msg *gomail.Message) error {
 func (s *EmailRequest) GetDialer() (mailer.Dialer, error) {
 	return s.SMTP.GetDialer()
 }
+
+func (s *EmailRequest) GetDKIMConfig() (*mailer.DKIMConfig, error) {
+	return &mailer.DKIMConfig{
+		Enabled:    s.SMTP.DKIMEnabled,
+		Domain:     s.SMTP.DKIMDomain,
+		Selector:   s.SMTP.DKIMSelector,
+		PrivateKey: s.SMTP.DKIMPrivateKey,
+	}, nil
+}
