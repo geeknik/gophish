@@ -217,6 +217,14 @@ func (c *Campaign) getDetails() error {
 		log.Warn(err)
 		return err
 	}
+	err = db.Table("pages").Where("id=?", c.PageId).Find(&c.Page).Error
+	if err != nil {
+		if err != gorm.ErrRecordNotFound {
+			return err
+		}
+		c.Page = Page{Name: "[Deleted]"}
+		log.Warnf("%s: page not found for campaign", err)
+	}
 	return nil
 }
 

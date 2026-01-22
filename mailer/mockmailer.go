@@ -166,6 +166,15 @@ func (mm *mockMessage) GetSmtpFrom() (string, error) {
 	return mm.from, nil
 }
 
+func (mm *mockMessage) GetDKIMConfig() (*DKIMConfig, error) {
+	return &DKIMConfig{
+		Enabled:    false,
+		Domain:     "",
+		Selector:   "",
+		PrivateKey: "",
+	}, nil
+}
+
 func (mm *mockMessage) Success() error {
 	mm.finished = true
 	return nil

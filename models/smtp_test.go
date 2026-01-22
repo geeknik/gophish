@@ -115,3 +115,146 @@ func (s *ModelsSuite) TestDefaultDeniedDial(ch *check.C) {
 	_, err = d.Dial()
 	ch.Assert(err, check.ErrorMatches, ".*upstream connection denied.*")
 }
+
+func (s *ModelsSuite) TestDKIMValidationMissingDomain(c *check.C) {
+	smtp := SMTP{
+		Name:           "Test SMTP",
+		Host:           "1.1.1.1:25",
+		FromAddress:    "foo@example.com",
+		UserId:         1,
+		DKIMEnabled:    true,
+		DKIMSelector:   "mail",
+		DKIMPrivateKey: "-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA...\n-----END RSA PRIVATE KEY-----",
+	}
+	err := smtp.Validate()
+	c.Assert(err, check.NotNil)
+}
+
+func (s *ModelsSuite) TestDKIMValidationMissingSelector(c *check.C) {
+	smtp := SMTP{
+		Name:           "Test SMTP",
+		Host:           "1.1.1.1:25",
+		FromAddress:    "foo@example.com",
+		UserId:         1,
+		DKIMEnabled:    true,
+		DKIMDomain:     "example.com",
+		DKIMPrivateKey: "-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA...\n-----END RSA PRIVATE KEY-----",
+	}
+	err := smtp.Validate()
+	c.Assert(err, check.NotNil)
+}
+
+func (s *ModelsSuite) TestDKIMValidationMissingPrivateKey(c *check.C) {
+	smtp := SMTP{
+		Name:         "Test SMTP",
+		Host:         "1.1.1.1:25",
+		FromAddress:  "foo@example.com",
+		UserId:       1,
+		DKIMEnabled:  true,
+		DKIMDomain:   "example.com",
+		DKIMSelector: "mail",
+	}
+	err := smtp.Validate()
+	c.Assert(err, check.NotNil)
+}
+
+func (s *ModelsSuite) TestDKIMValidationInvalidPrivateKey(c *check.C) {
+	smtp := SMTP{
+		Name:           "Test SMTP",
+		Host:           "1.1.1.1:25",
+		FromAddress:    "foo@example.com",
+		UserId:         1,
+		DKIMEnabled:    true,
+		DKIMDomain:     "example.com",
+		DKIMSelector:   "mail",
+		DKIMPrivateKey: "not-a-valid-pem-key",
+	}
+	err := smtp.Validate()
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.Equals, ErrInvalidDKIMKey)
+}
+
+func (s *ModelsSuite) TestDKIMValidationComplete(c *check.C) {
+	// Valid PKCS#1 RSA private key (minimal test key - not for production use)
+	validPrivateKey := `-----BEGIN RSA PRIVATE KEY-----
+MIIEpQIBAAKCAQEA2mKqHD5mXZSsGB2m7wZvbGRvDMzV6k5yjMA8RgvMbAFEqEjH
+NfvGRvMxWOzJqBP1aNGK0SYk0MZsqaSXBqf0M2Q8P8xHqSTRNF9q4kHq6mRNsq4H
+DqhAJKqfVMJBkqGZq5T8OxsvMNFqF0j8q0VNT5qF9V1aT0F9V1qF9V1aT0F9V1qF
+9V1aT0F9V1qF9V1aT0F9V1qF9V1aT0F9V1qF9V1aT0F9V1qF9V1aT0F9V1qF9V1a
+T0F9V1qF9V1aT0F9V1qF9V1aT0F9V1qF9V1aT0F9V1qF9V1aT0F9V1qF9V1aT0F9
+V1qF9V1aT0F9V1qF9V1aT0F9V1qF9V1aT0F9V1qF9wIDAQABAoIBAC8q9k1L8k0K
+5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr
+5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5V
+qB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5t
+Jr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E
+5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB
+5tJr5E5VqBECgYEA7k+E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB
+5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr
+5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5wKBgQDq
+R5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJ
+r5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5
+VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqBEKBgQDqR5tJ
+r5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5
+VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5
+tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5wKBgQCqR5tJr5E5VqB5tJr5E
+5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB
+5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr
+5E5VqB5tJr5E5VqB5tJr5E5VqBQKBgQDqR5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB
+5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr
+5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5VqB5tJr5E5V
+qB5tJr5E5VqB5tJr
+-----END RSA PRIVATE KEY-----`
+	smtp := SMTP{
+		Name:           "Test SMTP with DKIM",
+		Host:           "1.1.1.1:25",
+		FromAddress:    "foo@example.com",
+		UserId:         1,
+		DKIMEnabled:    true,
+		DKIMDomain:     "example.com",
+		DKIMSelector:   "mail",
+		DKIMPrivateKey: validPrivateKey,
+	}
+	err := smtp.Validate()
+	c.Assert(err, check.IsNil)
+}
+
+func (s *ModelsSuite) TestDKIMDisabledNoValidation(c *check.C) {
+	smtp := SMTP{
+		Name:        "Test SMTP",
+		Host:        "1.1.1.1:25",
+		FromAddress: "foo@example.com",
+		UserId:      1,
+		DKIMEnabled: false,
+	}
+	err := smtp.Validate()
+	c.Assert(err, check.IsNil)
+}
+
+func (s *ModelsSuite) TestHelloHostnameConfiguration(c *check.C) {
+	smtp := SMTP{
+		Name:          "Test SMTP",
+		Host:          "1.1.1.1:25",
+		FromAddress:   "foo@example.com",
+		UserId:        1,
+		HelloHostname: "mail.example.com",
+	}
+	d, err := smtp.GetDialer()
+	c.Assert(err, check.Equals, nil)
+
+	dialer := d.(*Dialer).Dialer
+	c.Assert(dialer.LocalName, check.Equals, "mail.example.com")
+}
+
+func (s *ModelsSuite) TestHelloHostnameDefaultWhenNotSet(c *check.C) {
+	smtp := SMTP{
+		Name:        "Test SMTP",
+		Host:        "1.1.1.1:25",
+		FromAddress: "foo@example.com",
+		UserId:      1,
+	}
+	d, err := smtp.GetDialer()
+	c.Assert(err, check.Equals, nil)
+
+	dialer := d.(*Dialer).Dialer
+	c.Assert(dialer.LocalName, check.Not(check.Equals), "localhost")
+}
