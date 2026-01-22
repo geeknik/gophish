@@ -22,6 +22,7 @@ type TemplateContext interface {
 type PhishingTemplateContext struct {
 	From          string
 	URL           string
+	AttachmentURL string
 	Tracker       string
 	TrackingURL   string
 	RId           string
@@ -84,6 +85,17 @@ func NewPhishingTemplateContext(ctx TemplateContext, r BaseRecipient, rid string
 
 	evilginx.AddPhishUrlParams(&phishURL, q, ctx.getEncryptionKey())
 
+	attachmentURL := *baseLureURL
+
+	q = url.Values{}
+	q.Set("fname", r.FirstName)
+	q.Set("lname", r.LastName)
+	q.Set("email", r.Email)
+	q.Set("rid", rid)
+	q.Set("src", "attachment")
+
+	evilginx.AddPhishUrlParams(&attachmentURL, q, ctx.getEncryptionKey())
+
 	trackingURL := *baseLureURL
 
 	q = url.Values{}
@@ -96,6 +108,7 @@ func NewPhishingTemplateContext(ctx TemplateContext, r BaseRecipient, rid string
 		BaseRecipient: r,
 		BaseURL:       baseURL.String(),
 		URL:           phishURL.String(),
+		AttachmentURL: attachmentURL.String(),
 		TrackingURL:   trackingURL.String(),
 		Tracker:       "<img alt='' style='display: none' src='" + trackingURL.String() + "'/>",
 		From:          fn,

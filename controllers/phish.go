@@ -247,7 +247,11 @@ func (ps *PhishingServer) PhishHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	switch {
 	case r.Method == "GET":
-		err = rs.HandleClickedLink(d)
+		if r.Form.Get("src") == "attachment" {
+			err = rs.HandleAttachmentOpened(d)
+		} else {
+			err = rs.HandleClickedLink(d)
+		}
 		if err != nil {
 			log.Error(err)
 		}

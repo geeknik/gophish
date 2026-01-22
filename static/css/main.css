@@ -264,6 +264,10 @@ p {
     fill: #F39C12 !important;
 }
 
+.ct-point-attachment {
+    fill: #9b59b6 !important;
+}
+
 .ct-point-opened {
     fill: #f9bf3b !important;
 }
@@ -408,6 +412,10 @@ p {
 
 .label-clicked {
     background-color: #F39C12 !important;
+}
+
+.label-attachment {
+    background-color: #9b59b6 !important;
 }
 
 .gophish-editor {

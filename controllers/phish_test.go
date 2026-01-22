@@ -353,6 +353,69 @@ func TestTransparencyRequest(t *testing.T) {
 	transparencyRequest(t, ctx, result, rid, "/report")
 }
 
+func openAttachment(t *testing.T, ctx *testContext, rid string, expectedHTML string) {
+	resp, err := http.Get(fmt.Sprintf("%s/?%s=%s&src=attachment", ctx.phishServer.URL, models.RecipientParameter, rid))
+	if err != nil {
+		t.Fatalf("error requesting / endpoint with src=attachment: %v", err)
+	}
+	defer resp.Body.Close()
+	got, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("error reading payload from / endpoint response: %v", err)
+	}
+	if !bytes.Equal(got, []byte(expectedHTML)) {
+		t.Fatalf("invalid response received from / endpoint. expected %s got %s", got, expectedHTML)
+	}
+}
+
+func TestAttachmentOpenedEvent(t *testing.T) {
+	ctx := setupTest(t)
+	defer tearDown(t, ctx)
+	campaign := getFirstCampaign(t)
+	result := campaign.Results[0]
+	if result.Status != models.StatusSending {
+		t.Fatalf("unexpected result status received. expected %s got %s", models.StatusSending, result.Status)
+	}
+
+	openAttachment(t, ctx, result.RId, campaign.Page.HTML)
+
+	campaign = getFirstCampaign(t)
+	result = campaign.Results[0]
+	lastEvent := campaign.Events[len(campaign.Events)-1]
+	if result.Status != models.EventAttachmentOpened {
+		t.Fatalf("unexpected result status received. expected %s got %s", models.EventAttachmentOpened, result.Status)
+	}
+	if lastEvent.Message != models.EventAttachmentOpened {
+		t.Fatalf("unexpected event status received. expected %s got %s", lastEvent.Message, models.EventAttachmentOpened)
+	}
+	if result.ModifiedDate != lastEvent.Time {
+		t.Fatalf("unexpected result modified date received. expected %s got %s", lastEvent.Time, result.ModifiedDate)
+	}
+}
+
+func TestAttachmentOpenedDoesNotOverwriteClicked(t *testing.T) {
+	ctx := setupTest(t)
+	defer tearDown(t, ctx)
+	campaign := getFirstCampaign(t)
+	result := campaign.Results[0]
+
+	clickLink(t, ctx, result.RId, campaign.Page.HTML)
+
+	campaign = getFirstCampaign(t)
+	result = campaign.Results[0]
+	if result.Status != models.EventClicked {
+		t.Fatalf("unexpected result status received after click. expected %s got %s", models.EventClicked, result.Status)
+	}
+
+	openAttachment(t, ctx, result.RId, campaign.Page.HTML)
+
+	campaign = getFirstCampaign(t)
+	result = campaign.Results[0]
+	if result.Status != models.EventClicked {
+		t.Fatalf("status should remain EventClicked after attachment open. expected %s got %s", models.EventClicked, result.Status)
+	}
+}
+
 func TestRedirectTemplating(t *testing.T) {
 	ctx := setupTest(t)
 	defer tearDown(t, ctx)

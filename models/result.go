@@ -123,6 +123,23 @@ func (r *Result) HandleClickedLink(details EventDetails) error {
 	return db.Save(r).Error
 }
 
+// HandleAttachmentOpened updates a Result in the case where the recipient
+// opened an HTML attachment that contains a tracking link.
+func (r *Result) HandleAttachmentOpened(details EventDetails) error {
+	event, err := r.createEvent(EventAttachmentOpened, details)
+	if err != nil {
+		return err
+	}
+	// Don't update the status if the user has already clicked a link or
+	// submitted data via the landing page form.
+	if r.Status == EventClicked || r.Status == EventDataSubmit {
+		return nil
+	}
+	r.Status = EventAttachmentOpened
+	r.ModifiedDate = event.Time
+	return db.Save(r).Error
+}
+
 // HandleFormSubmit updates a Result in the case where the recipient submitted
 // credentials to the form on a Landing Page.
 func (r *Result) HandleFormSubmit(details EventDetails) error {

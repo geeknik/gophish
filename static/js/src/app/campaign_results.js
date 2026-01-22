@@ -36,6 +36,12 @@ var statuses = {
         icon: "fa-mouse-pointer",
         point: "ct-point-clicked"
     },
+    "Attachment Opened": {
+        color: "#9b59b6",
+        label: "label-attachment",
+        icon: "fa-paperclip",
+        point: "ct-point-attachment"
+    },
     "Success": {
         color: "#f05b4f",
         label: "label-danger",
@@ -101,6 +107,7 @@ var statusMapping = {
     "Email Sent": "sent",
     "Email Opened": "opened",
     "Clicked Link": "clicked",
+    "Attachment Opened": "attachment_opened",
     "Submitted Data": "submitted_data",
     "Email Reported": "reported",
 }
@@ -111,6 +118,7 @@ var progressListing = [
     "Email Sent",
     "Email Opened",
     "Clicked Link",
+    "Attachment Opened",
     "Submitted Data"
 ]
 
