@@ -38,7 +38,7 @@ func TestSSRFProtectionBlocksMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error decoding body: %v", err)
 	}
-	if !strings.Contains(got.Message, "internal networks are not allowed") {
+	if !strings.Contains(got.Message, "upstream connection denied") {
 		t.Fatalf("incorrect response error provided: %s", got.Message)
 	}
 }
@@ -56,7 +56,7 @@ func TestSSRFProtectionBlocksLocalhost(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error decoding body: %v", err)
 	}
-	if !strings.Contains(got.Message, "internal networks are not allowed") {
+	if !strings.Contains(got.Message, "upstream connection denied") {
 		t.Fatalf("incorrect response error provided: %s", got.Message)
 	}
 }
@@ -79,7 +79,7 @@ func TestSSRFProtectionBlocksPrivateNetworks(t *testing.T) {
 		if err != nil {
 			t.Fatalf("error decoding body: %v", err)
 		}
-		if !strings.Contains(got.Message, "internal networks are not allowed") {
+		if !strings.Contains(got.Message, "upstream connection denied") {
 			t.Fatalf("URL %s: incorrect response error provided: %s", url, got.Message)
 		}
 	}

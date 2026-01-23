@@ -59,18 +59,39 @@ func Dialer() *net.Dialer {
 	return DefaultDialer.Dialer()
 }
 
-// StrictDialer returns a net.Dialer that blocks ALL internal/private IP ranges.
-// Use this for user-controlled URLs (e.g., site import) to prevent SSRF attacks.
-func StrictDialer() *net.Dialer {
+// Dialer returns a net.Dialer that restricts outbound connections to only the
+// allowed addresses over TCP.
+//
+// By default, all internal/private IP ranges are blocked to prevent SSRF attacks.
+// This includes 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, etc.
+//
+// Red team operators who need to clone internal sites can add specific ranges
+// to "allowed_internal_hosts" in config.json, e.g.:
+//
+//	"allowed_internal_hosts": ["192.168.1.0/24", "10.0.0.0/8"]
+//
+// This implementation is based on the blog post by Andrew Ayer at
+// https://www.agwa.name/blog/post/preventing_server_side_request_forgery_in_golang
+// 169.254.0.0/16.
+//
+// If hosts are provided, then Gophish blocks access to all local addresses
+// except the ones provided.
+//
+// This implementation is based on the blog post by Andrew Ayer at
+// https://www.agwa.name/blog/post/preventing_server_side_request_forgery_in_golang
+func (d *RestrictedDialer) Dialer() *net.Dialer {
 	return &net.Dialer{
 		Timeout:   30 * time.Second,
 		KeepAlive: 30 * time.Second,
-		Control:   strictControl(),
+		Control:   restrictedControl(d.allowedHosts),
 	}
 }
 
-// strictDeny contains all private/internal IP ranges for SSRF protection
-var strictDeny = []string{
+// defaultDeny represents the list of IP ranges that we block by default.
+// This is stricter than the original (which only blocked 169.254.0.0/16)
+// to prevent SSRF attacks. Red team operators who need to clone internal
+// sites can add "allowed_internal_hosts" to their config.json.
+var defaultDeny = []string{
 	"0.0.0.0/8",
 	"127.0.0.0/8",
 	"10.0.0.0/8",
@@ -87,61 +108,6 @@ var strictDeny = []string{
 	"::1/128",
 	"fe80::/10",
 	"fc00::/7",
-}
-
-func strictControl() dialControl {
-	return func(network string, address string, conn syscall.RawConn) error {
-		if !(network == "tcp4" || network == "tcp6") {
-			return fmt.Errorf("%s is not a safe network type", network)
-		}
-
-		host, _, err := net.SplitHostPort(address)
-		if err != nil {
-			return fmt.Errorf("%s is not a valid host/port pair: %s", address, err)
-		}
-
-		ip := net.ParseIP(host)
-		if ip == nil {
-			return fmt.Errorf("%s is not a valid IP address", host)
-		}
-
-		for _, ipRange := range strictDeny {
-			_, parsed, err := net.ParseCIDR(ipRange)
-			if err != nil {
-				return fmt.Errorf("error parsing denied range: %v", err)
-			}
-			if parsed.Contains(ip) {
-				return fmt.Errorf("connections to internal networks are not allowed")
-			}
-		}
-		return nil
-	}
-}
-
-// Dialer returns a net.Dialer that restricts outbound connections to only the
-// allowed addresses over TCP.
-//
-// By default, since Gophish anticipates connections originating to hosts on
-// the local network, we only deny access to the link-local addresses at
-// 169.254.0.0/16.
-//
-// If hosts are provided, then Gophish blocks access to all local addresses
-// except the ones provided.
-//
-// This implementation is based on the blog post by Andrew Ayer at
-// https://www.agwa.name/blog/post/preventing_server_side_request_forgery_in_golang
-func (d *RestrictedDialer) Dialer() *net.Dialer {
-	return &net.Dialer{
-		Timeout:   30 * time.Second,
-		KeepAlive: 30 * time.Second,
-		Control:   restrictedControl(d.allowedHosts),
-	}
-}
-
-// defaultDeny represents the list of IP ranges that we want to block unless
-// explicitly overriden.
-var defaultDeny = []string{
-	"169.254.0.0/16", // Link-local (used for VPS instance metadata)
 }
 
 // allInternal represents all internal hosts such that the only connections

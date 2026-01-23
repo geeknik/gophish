@@ -126,9 +126,9 @@ func (as *Server) ImportSite(w http.ResponseWriter, r *http.Request) {
 		JSONResponse(w, models.Response{Success: false, Message: err.Error()}, http.StatusBadRequest)
 		return
 	}
-	strictDialer := dialer.StrictDialer()
+	restrictedDialer := dialer.Dialer()
 	tr := &http.Transport{
-		DialContext: strictDialer.DialContext,
+		DialContext: restrictedDialer.DialContext,
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true,
 		},

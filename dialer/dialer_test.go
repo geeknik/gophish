@@ -8,24 +8,41 @@ import (
 	"testing"
 )
 
-func TestDefaultDeny(t *testing.T) {
+func TestDefaultBlocksAllInternalNetworks(t *testing.T) {
 	control := restrictedControl([]*net.IPNet{})
-	host := "169.254.169.254"
-	expected := fmt.Errorf("upstream connection denied to internal host at %s", host)
 	conn := new(syscall.RawConn)
-	got := control("tcp4", fmt.Sprintf("%s:80", host), *conn)
-	if !strings.Contains(got.Error(), "upstream connection denied") {
-		t.Fatalf("unexpected error dialing denylisted host. expected %v got %v", expected, got)
+
+	internalHosts := []string{
+		"127.0.0.1",
+		"10.0.0.1",
+		"172.16.0.1",
+		"192.168.1.1",
+		"169.254.169.254",
+	}
+
+	for _, host := range internalHosts {
+		got := control("tcp4", fmt.Sprintf("%s:80", host), *conn)
+		if got == nil || !strings.Contains(got.Error(), "upstream connection denied") {
+			t.Fatalf("default should block %s, got: %v", host, got)
+		}
 	}
 }
 
-func TestDefaultAllow(t *testing.T) {
+func TestDefaultAllowsExternalHosts(t *testing.T) {
 	control := restrictedControl([]*net.IPNet{})
-	host := "1.1.1.1"
 	conn := new(syscall.RawConn)
-	got := control("tcp4", fmt.Sprintf("%s:80", host), *conn)
-	if got != nil {
-		t.Fatalf("error dialing allowed host. got %v", got)
+
+	externalHosts := []string{
+		"1.1.1.1",
+		"8.8.8.8",
+		"93.184.216.34",
+	}
+
+	for _, host := range externalHosts {
+		got := control("tcp4", fmt.Sprintf("%s:80", host), *conn)
+		if got != nil {
+			t.Fatalf("default should allow external host %s, got: %v", host, got)
+		}
 	}
 }
 
@@ -84,40 +101,21 @@ func TestSingleIP(t *testing.T) {
 	DefaultDialer.SetAllowedHosts(orig)
 }
 
-func TestStrictDialerBlocksInternalNetworks(t *testing.T) {
-	control := strictControl()
+func TestAllowedInternalHostsConfig(t *testing.T) {
+	orig := DefaultDialer.AllowedHosts()
+	defer DefaultDialer.SetAllowedHosts(orig)
+
+	DefaultDialer.SetAllowedHosts([]string{"192.168.1.0/24"})
+	control := DefaultDialer.Dialer().Control
 	conn := new(syscall.RawConn)
 
-	internalHosts := []string{
-		"127.0.0.1",
-		"10.0.0.1",
-		"172.16.0.1",
-		"192.168.1.1",
-		"169.254.169.254",
+	got := control("tcp4", "192.168.1.50:80", *conn)
+	if got != nil {
+		t.Fatalf("allowed internal host should be permitted: %v", got)
 	}
 
-	for _, host := range internalHosts {
-		got := control("tcp4", fmt.Sprintf("%s:80", host), *conn)
-		if got == nil || !strings.Contains(got.Error(), "internal networks are not allowed") {
-			t.Fatalf("StrictDialer should block %s, got: %v", host, got)
-		}
-	}
-}
-
-func TestStrictDialerAllowsExternalHosts(t *testing.T) {
-	control := strictControl()
-	conn := new(syscall.RawConn)
-
-	externalHosts := []string{
-		"1.1.1.1",
-		"8.8.8.8",
-		"93.184.216.34",
-	}
-
-	for _, host := range externalHosts {
-		got := control("tcp4", fmt.Sprintf("%s:80", host), *conn)
-		if got != nil {
-			t.Fatalf("StrictDialer should allow %s, got: %v", host, got)
-		}
+	got = control("tcp4", "192.168.2.50:80", *conn)
+	if got == nil || !strings.Contains(got.Error(), "upstream connection denied") {
+		t.Fatalf("non-allowed internal host should be blocked: %v", got)
 	}
 }
