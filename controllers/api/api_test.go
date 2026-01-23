@@ -2,7 +2,6 @@ package api
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -85,13 +84,11 @@ func createTestData(t *testing.T) {
 	c.UpdateStatus(models.CampaignEmailsSent)
 }
 
-func TestSiteImportBaseHref(t *testing.T) {
+func TestSiteImportBlocksLocalhost(t *testing.T) {
 	ctx := setupTest(t)
-	h := "<html><head></head><body><img src=\"/test.png\"/></body></html>"
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, h)
+		fmt.Fprintln(w, "<html><body>test</body></html>")
 	}))
-	expected := fmt.Sprintf("<html><head><base href=\"%s\"/></head><body><img src=\"/test.png\"/>\n</body></html>", ts.URL)
 	defer ts.Close()
 	req := httptest.NewRequest(http.MethodPost, "/api/import/site",
 		bytes.NewBuffer([]byte(fmt.Sprintf(`
@@ -103,12 +100,7 @@ func TestSiteImportBaseHref(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	response := httptest.NewRecorder()
 	ctx.apiServer.ImportSite(response, req)
-	cs := cloneResponse{}
-	err := json.NewDecoder(response.Body).Decode(&cs)
-	if err != nil {
-		t.Fatalf("error decoding response: %v", err)
-	}
-	if cs.HTML != expected {
-		t.Fatalf("unexpected response received. expected %s got %s", expected, cs.HTML)
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("expected BadRequest for localhost, got %d", response.Code)
 	}
 }

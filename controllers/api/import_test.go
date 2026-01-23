@@ -9,13 +9,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gophish/gophish/dialer"
 	"github.com/gophish/gophish/models"
 )
 
-func makeImportRequest(ctx *testContext, allowedHosts []string, url string) *httptest.ResponseRecorder {
-	orig := dialer.DefaultDialer.AllowedHosts()
-	dialer.SetAllowedHosts(allowedHosts)
+func makeImportRequest(ctx *testContext, url string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodPost, "/api/import/site",
 		bytes.NewBuffer([]byte(fmt.Sprintf(`
 			{
@@ -25,14 +22,13 @@ func makeImportRequest(ctx *testContext, allowedHosts []string, url string) *htt
 	req.Header.Set("Content-Type", "application/json")
 	response := httptest.NewRecorder()
 	ctx.apiServer.ImportSite(response, req)
-	dialer.SetAllowedHosts(orig)
 	return response
 }
 
-func TestDefaultDeniedImport(t *testing.T) {
+func TestSSRFProtectionBlocksMetadata(t *testing.T) {
 	ctx := setupTest(t)
 	metadataURL := "http://169.254.169.254/latest/meta-data/"
-	response := makeImportRequest(ctx, []string{}, metadataURL)
+	response := makeImportRequest(ctx, metadataURL)
 	expectedCode := http.StatusBadRequest
 	if response.Code != expectedCode {
 		t.Fatalf("incorrect status code received. expected %d got %d", expectedCode, response.Code)
@@ -42,33 +38,15 @@ func TestDefaultDeniedImport(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error decoding body: %v", err)
 	}
-	if !strings.Contains(got.Message, "upstream connection denied") {
+	if !strings.Contains(got.Message, "internal networks are not allowed") {
 		t.Fatalf("incorrect response error provided: %s", got.Message)
 	}
 }
 
-func TestDefaultAllowedImport(t *testing.T) {
+func TestSSRFProtectionBlocksLocalhost(t *testing.T) {
 	ctx := setupTest(t)
-	h := "<html><head></head><body><img src=\"/test.png\"/></body></html>"
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, h)
-	}))
-	defer ts.Close()
-	response := makeImportRequest(ctx, []string{}, ts.URL)
-	expectedCode := http.StatusOK
-	if response.Code != expectedCode {
-		t.Fatalf("incorrect status code received. expected %d got %d", expectedCode, response.Code)
-	}
-}
-
-func TestCustomDeniedImport(t *testing.T) {
-	ctx := setupTest(t)
-	h := "<html><head></head><body><img src=\"/test.png\"/></body></html>"
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, h)
-	}))
-	defer ts.Close()
-	response := makeImportRequest(ctx, []string{"192.168.1.1"}, ts.URL)
+	localhostURL := "http://127.0.0.1:8080/test"
+	response := makeImportRequest(ctx, localhostURL)
 	expectedCode := http.StatusBadRequest
 	if response.Code != expectedCode {
 		t.Fatalf("incorrect status code received. expected %d got %d", expectedCode, response.Code)
@@ -78,7 +56,58 @@ func TestCustomDeniedImport(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error decoding body: %v", err)
 	}
-	if !strings.Contains(got.Message, "upstream connection denied") {
+	if !strings.Contains(got.Message, "internal networks are not allowed") {
 		t.Fatalf("incorrect response error provided: %s", got.Message)
+	}
+}
+
+func TestSSRFProtectionBlocksPrivateNetworks(t *testing.T) {
+	ctx := setupTest(t)
+	privateURLs := []string{
+		"http://10.0.0.1/",
+		"http://172.16.0.1/",
+		"http://192.168.1.1/",
+	}
+	for _, url := range privateURLs {
+		response := makeImportRequest(ctx, url)
+		expectedCode := http.StatusBadRequest
+		if response.Code != expectedCode {
+			t.Fatalf("URL %s: incorrect status code received. expected %d got %d", url, expectedCode, response.Code)
+		}
+		got := &models.Response{}
+		err := json.NewDecoder(response.Body).Decode(got)
+		if err != nil {
+			t.Fatalf("error decoding body: %v", err)
+		}
+		if !strings.Contains(got.Message, "internal networks are not allowed") {
+			t.Fatalf("URL %s: incorrect response error provided: %s", url, got.Message)
+		}
+	}
+}
+
+func TestURLSchemeValidation(t *testing.T) {
+	ctx := setupTest(t)
+	invalidURLs := []struct {
+		url      string
+		errorMsg string
+	}{
+		{"file:///etc/passwd", "URL scheme must be http or https"},
+		{"gopher://127.0.0.1:25/", "URL scheme must be http or https"},
+		{"ftp://example.com/", "URL scheme must be http or https"},
+	}
+	for _, tc := range invalidURLs {
+		response := makeImportRequest(ctx, tc.url)
+		expectedCode := http.StatusBadRequest
+		if response.Code != expectedCode {
+			t.Fatalf("URL %s: incorrect status code received. expected %d got %d", tc.url, expectedCode, response.Code)
+		}
+		got := &models.Response{}
+		err := json.NewDecoder(response.Body).Decode(got)
+		if err != nil {
+			t.Fatalf("error decoding body: %v", err)
+		}
+		if !strings.Contains(got.Message, tc.errorMsg) {
+			t.Fatalf("URL %s: expected error containing '%s', got: %s", tc.url, tc.errorMsg, got.Message)
+		}
 	}
 }

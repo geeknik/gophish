@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -25,6 +26,17 @@ type cloneRequest struct {
 func (cr *cloneRequest) validate() error {
 	if cr.URL == "" {
 		return errors.New("No URL Specified")
+	}
+	parsedURL, err := url.Parse(cr.URL)
+	if err != nil {
+		return errors.New("Invalid URL format")
+	}
+	scheme := strings.ToLower(parsedURL.Scheme)
+	if scheme != "http" && scheme != "https" {
+		return errors.New("URL scheme must be http or https")
+	}
+	if parsedURL.Host == "" {
+		return errors.New("URL must contain a valid host")
 	}
 	return nil
 }
@@ -114,9 +126,9 @@ func (as *Server) ImportSite(w http.ResponseWriter, r *http.Request) {
 		JSONResponse(w, models.Response{Success: false, Message: err.Error()}, http.StatusBadRequest)
 		return
 	}
-	restrictedDialer := dialer.Dialer()
+	strictDialer := dialer.StrictDialer()
 	tr := &http.Transport{
-		DialContext: restrictedDialer.DialContext,
+		DialContext: strictDialer.DialContext,
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true,
 		},

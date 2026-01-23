@@ -59,6 +59,65 @@ func Dialer() *net.Dialer {
 	return DefaultDialer.Dialer()
 }
 
+// StrictDialer returns a net.Dialer that blocks ALL internal/private IP ranges.
+// Use this for user-controlled URLs (e.g., site import) to prevent SSRF attacks.
+func StrictDialer() *net.Dialer {
+	return &net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+		Control:   strictControl(),
+	}
+}
+
+// strictDeny contains all private/internal IP ranges for SSRF protection
+var strictDeny = []string{
+	"0.0.0.0/8",
+	"127.0.0.0/8",
+	"10.0.0.0/8",
+	"100.64.0.0/10",
+	"172.16.0.0/12",
+	"169.254.0.0/16",
+	"192.88.99.0/24",
+	"192.168.0.0/16",
+	"198.51.100.0/24",
+	"203.0.113.0/24",
+	"224.0.0.0/4",
+	"240.0.0.0/4",
+	"255.255.255.255/32",
+	"::1/128",
+	"fe80::/10",
+	"fc00::/7",
+}
+
+func strictControl() dialControl {
+	return func(network string, address string, conn syscall.RawConn) error {
+		if !(network == "tcp4" || network == "tcp6") {
+			return fmt.Errorf("%s is not a safe network type", network)
+		}
+
+		host, _, err := net.SplitHostPort(address)
+		if err != nil {
+			return fmt.Errorf("%s is not a valid host/port pair: %s", address, err)
+		}
+
+		ip := net.ParseIP(host)
+		if ip == nil {
+			return fmt.Errorf("%s is not a valid IP address", host)
+		}
+
+		for _, ipRange := range strictDeny {
+			_, parsed, err := net.ParseCIDR(ipRange)
+			if err != nil {
+				return fmt.Errorf("error parsing denied range: %v", err)
+			}
+			if parsed.Contains(ip) {
+				return fmt.Errorf("connections to internal networks are not allowed")
+			}
+		}
+		return nil
+	}
+}
+
 // Dialer returns a net.Dialer that restricts outbound connections to only the
 // allowed addresses over TCP.
 //
