@@ -128,3 +128,38 @@ func TestAccountLocked(t *testing.T) {
 		t.Fatalf("invalid status code received. expected %d got %d", expected, got)
 	}
 }
+
+func TestOpenRedirectPrevention(t *testing.T) {
+	maliciousURLs := []string{
+		"//evil.com",
+		"//evil.com/path",
+		"https://evil.com",
+		"http://evil.com",
+		"/\\evil.com",
+		"///evil.com",
+	}
+
+	for _, malicious := range maliciousURLs {
+		ctx := setupTest(t)
+		client := &http.Client{
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			}}
+		resp := attemptLogin(t, ctx, client, "admin", "gophish", fmt.Sprintf("?next=%s", url.QueryEscape(malicious)))
+		tearDown(t, ctx)
+
+		if resp.StatusCode != http.StatusFound {
+			t.Fatalf("expected redirect for %s, got %d", malicious, resp.StatusCode)
+		}
+		location, err := resp.Location()
+		if err != nil {
+			t.Fatalf("error getting location header: %v", err)
+		}
+		if strings.Contains(location.String(), "evil") {
+			t.Fatalf("open redirect vulnerability: %s resulted in redirect containing 'evil': %s", malicious, location.String())
+		}
+		if location.Path != "/" {
+			t.Fatalf("expected redirect to / for malicious URL %s, got path: %s", malicious, location.Path)
+		}
+	}
+}

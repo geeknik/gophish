@@ -296,11 +296,14 @@ func (as *AdminServer) UserManagement(w http.ResponseWriter, r *http.Request) {
 
 func (as *AdminServer) nextOrIndex(w http.ResponseWriter, r *http.Request) {
 	next := "/"
-	url, err := url.Parse(r.FormValue("next"))
-	if err == nil {
-		path := url.EscapedPath()
-		if path != "" {
-			next = "/" + strings.TrimLeft(path, "/")
+	nextParam := r.FormValue("next")
+	if nextParam != "" {
+		parsedURL, err := url.Parse(nextParam)
+		if err == nil && parsedURL.Host == "" && parsedURL.Scheme == "" {
+			path := parsedURL.Path
+			if path != "" && !strings.HasPrefix(path, "//") && !strings.ContainsAny(path, "\\@") {
+				next = "/" + strings.TrimLeft(path, "/")
+			}
 		}
 	}
 	http.Redirect(w, r, next, http.StatusFound)
