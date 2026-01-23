@@ -129,8 +129,9 @@ func (as *Server) ImportSite(w http.ResponseWriter, r *http.Request) {
 	restrictedDialer := dialer.Dialer()
 	tr := &http.Transport{
 		DialContext: restrictedDialer.DialContext,
+		// lgtm[go/disabled-certificate-check] Required to clone sites with self-signed/expired certs
 		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
+			InsecureSkipVerify: true, //nolint:gosec
 		},
 	}
 	client := &http.Client{Transport: tr}

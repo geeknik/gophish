@@ -60,12 +60,13 @@ func AddPhishUrlParams(base_url *url.URL, params url.Values, base_key string) {
 			crc += byte(c)
 		}
 
-		c, err := rc4.NewCipher([]byte(enc_key))
+		// lgtm[go/weak-cryptographic-algorithm] RC4 used for URL obfuscation, not security
+		c, err := rc4.NewCipher([]byte(enc_key)) //nolint:gosec
 		if err != nil {
 			return
 		}
 		enc_params := make([]byte, len(dec_params)+1)
-		c.XORKeyStream(enc_params[1:], []byte(dec_params))
+		c.XORKeyStream(enc_params[1:], []byte(dec_params)) //nolint:gosec
 		enc_params[0] = crc
 
 		key_val := enc_key + base64.RawURLEncoding.EncodeToString([]byte(enc_params))
@@ -139,11 +140,12 @@ func ExtractPhishUrlParams(data string, base_key string) (map[string]string, boo
 			dec_params := make([]byte, len(enc_vals)-1)
 
 			var crc byte = enc_vals[0]
-			c, err := rc4.NewCipher([]byte(enc_key))
+			// lgtm[go/weak-cryptographic-algorithm] RC4 used for URL obfuscation, not security
+			c, err := rc4.NewCipher([]byte(enc_key)) //nolint:gosec
 			if err != nil {
 				return ret, false, err
 			}
-			c.XORKeyStream(dec_params, enc_vals[1:])
+			c.XORKeyStream(dec_params, enc_vals[1:]) //nolint:gosec
 
 			var crc_chk byte
 			for _, c := range dec_params {

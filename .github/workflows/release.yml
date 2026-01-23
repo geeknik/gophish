@@ -3,6 +3,11 @@ on:
     release:
         types: [created]
 
+# Explicit permissions for least privilege
+permissions:
+    contents: write  # Needed to upload release assets
+    actions: read    # Needed to download artifacts
+
 jobs:
     build:
         name: Build Binary
